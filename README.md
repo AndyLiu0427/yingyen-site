@@ -16,27 +16,29 @@ fourth is three.js driving WebGPU through TSL node materials.
 
 | Sketch | What it does |
 | --- | --- |
-| [Four Elements](https://yingyen.com/lab/elements) | Fire, water, earth and wind, one node material each |
+| [Open Water](https://yingyen.com/lab/ocean) | Nine Gerstner waves, with foam where the surface folds |
 | [Curl Field](https://yingyen.com/lab/particles) | 163,840 particles advected through a curl noise field |
 | [Still Water](https://yingyen.com/lab/ripple) | The wave equation, solved in a ping-pong texture pair |
 | [Paper Weather](https://yingyen.com/lab/aurora) | Domain-warped fBm, sampled three levels deep |
 
-**Four Elements.** Four spheres, four materials, no textures anywhere. Fire is
-basalt crust with molten seams, and because the noise field drifts downward in
-object space the seams read as heat climbing rather than rock sliding. Water is
-three sine waves crossing at odd ratios so the swell never quite repeats. Earth
-is voronoi plates over sedimentary banding, drifting slowly enough to read as
-tectonics. Wind is not a solid body at all: three nested additive shells
-sampling noise on a coordinate squashed along one axis, which stretches it into
-streaks, running at different speeds so the parallax between them reads as
-depth.
+**Open Water.** A sine wave only moves the surface up and down, which is why
+a sum of sines reads as wobbling rather than water. A Gerstner wave also moves
+each point horizontally, against the direction of travel at the crest, so the
+water piles into a sharp peak and spreads into a wide flat trough. Nine of them
+run across a rough wind spectrum, each travelling at the speed deep water
+actually gives its wavelength, which is most of why the surface never appears
+to loop.
 
-Every displaced surface recomputes its own shading normal from two tangential
-samples of the field. That is the difference between geometry that has waves
-and lighting that knows about them. One detail worth keeping: thin filaments
-want `smoothstep(width, 0, abs(noise))`, not `1 - abs(noise)`. Fractal noise
-clusters near zero, so the second form sits close to 1 nearly everywhere and
-floods the whole surface instead of drawing lines on it.
+Their derivatives are closed form, so the normal is exact and so is the
+Jacobian of the horizontal displacement. That second one places the foam:
+below one the surface is compressing, near zero it is folding over itself, and
+folding is what breaking is. Thresholding the fold rather than the height is
+the difference between foam on breaking crests and foam smeared over every
+tall smooth swell. Shading is Schlick against water's real index of refraction,
+two percent reflective head on and almost a mirror at grazing angles, over an
+analytic sky that is also the only light in the scene. The camera rides the
+swell from a CPU copy of the same wave sum, because an eye fixed at two units
+spends half its time inside a crest.
 
 **Curl Field.** Every particle is four floats, position and velocity, in one
 storage buffer. A compute pass rewrites that buffer in place each frame and

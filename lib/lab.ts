@@ -12,12 +12,12 @@ export type LabSketchMeta = {
 
 export const labSketches: LabSketchMeta[] = [
   {
-    slug: "elements",
-    name: "Four Elements",
-    blurb: "Fire, water, earth and wind, one shader each.",
+    slug: "ocean",
+    name: "Open Water",
+    blurb: "Nine Gerstner waves, with foam where the surface folds.",
     detail:
-      "Four spheres, four node materials, no textures anywhere. Fire is basalt crust with molten seams, and because the noise field drifts downward in object space the seams read as heat climbing rather than rock sliding. Water is three sine waves crossing at odd ratios so the swell never quite repeats. Earth is voronoi plates over sedimentary banding, drifting slowly enough to read as tectonics. Wind is not a solid body at all: three nested additive shells sampling noise on a coordinate squashed along one axis, which stretches it into streaks, running at different speeds so the parallax between them reads as depth. Every displaced surface recomputes its own shading normal from two tangential samples of the field, which is the difference between geometry that has waves and lighting that knows about them.",
-    technique: "three.js WebGPURenderer, TSL node materials",
+      "A sine wave only moves the surface up and down, which is why a sum of sines reads as wobbling rather than water. A Gerstner wave also moves each point horizontally, against the direction of travel at the crest, so the water piles into a sharp peak and spreads into a wide flat trough. Nine of them run here across a rough wind spectrum, each travelling at the speed deep water actually gives its wavelength, which is most of why the surface never appears to loop. Their derivatives are closed form, so the normal is exact and so is the Jacobian of the horizontal displacement. That second one is what places the foam: below one the surface is compressing, near zero it is folding over itself, and folding is what breaking is. Shading is Schlick against water's real index of refraction, two percent reflective head on and almost a mirror at grazing angles, over an analytic sky that is also the only light in the scene.",
+    technique: "Gerstner waves, TSL node material, analytic sky",
     dark: true,
   },
   {

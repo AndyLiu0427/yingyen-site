@@ -3,7 +3,7 @@
 import ThreeCanvas from "./ThreeCanvas";
 import VgpuCanvas from "./VgpuCanvas";
 import { aurora } from "./demos/aurora";
-import { elements } from "./demos/elements";
+import { ocean } from "./demos/ocean";
 import { particles } from "./demos/particles";
 import { ripple } from "./demos/ripple";
 import type { ThreeCanvasOptions, ThreeSetup } from "./useThreeCanvas";
@@ -31,7 +31,7 @@ const SKETCHES: Record<string, Entry> = {
     setup: particles,
     options: { clearColor: [0.043, 0.051, 0.071, 1] },
   },
-  elements: { backend: "three", setup: elements },
+  ocean: { backend: "three", setup: ocean },
 };
 
 type Props = {

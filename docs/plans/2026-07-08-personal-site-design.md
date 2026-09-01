@@ -80,7 +80,7 @@ the name shifts up 14svh and the blob scales down.
 ### Page structure
 
 Hero (100svh) → About → Craft (3 items, content right-aligned so the blob
-can sit left) → Now (UIPrompt, Practical AI Stack, open to roles) → Contact
+can sit left) → Now (UIPrompt, Practical AI Stack) → Contact
 ("Say hi." + email, blob hovers small above) → footer (blob credit line).
 
 v2 signature (removed): Blender-generated trefoil GLB; the bpy generator

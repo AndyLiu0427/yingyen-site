@@ -14,10 +14,10 @@ export const labSketches: LabSketchMeta[] = [
   {
     slug: "ocean",
     name: "Open Water",
-    blurb: "Nine Gerstner waves, with foam where the surface folds.",
+    blurb: "A Tessendorf FFT ocean, simulated on the GPU every frame.",
     detail:
-      "A sine wave only moves the surface up and down, which is why a sum of sines reads as wobbling rather than water. A Gerstner wave also moves each point horizontally, against the direction of travel at the crest, so the water piles into a sharp peak and spreads into a wide flat trough. Nine of them run here across a rough wind spectrum, each travelling at the speed deep water actually gives its wavelength, which is most of why the surface never appears to loop. Their derivatives are closed form, so the normal is exact and so is the Jacobian of the horizontal displacement. That second one is what places the foam: below one the surface is compressing, near zero it is folding over itself, and folding is what breaking is. Shading is Schlick against water's real index of refraction, two percent reflective head on and almost a mirror at grazing angles, over an analytic sky that is also the only light in the scene.",
-    technique: "Gerstner waves, TSL node material, analytic sky",
+      "Real ocean renderers do not add waves together, they inverse transform a spectrum. A Phillips spectrum says how much energy the wind puts into each wavenumber; multiplying it by a complex Gaussian turns that smooth curve into an actual random sea; and an inverse FFT turns the whole spectrum into a height field in one shot. That is Tessendorf's method, and it is what film and game oceans have used for twenty years. Here it runs as WebGPU compute: a radix-2 butterfly, seventeen dispatches a frame, two cascades stacked in one buffer so the whole ocean transforms at once. The tile sizes share no common factor, so the two never line up and the repeat stops being findable. Each element is a vec4 carrying two complex channels, which lets one pass move four real fields, because two Hermitian spectra pack cleanly into the real and imaginary halves of one. The spectrum is calibrated through Parseval to a significant wave height in metres rather than to a magic constant, and the shading is Schlick against water's real index of refraction with GGX sun glitter, over an analytic sky that is also the only light in the scene.",
+    technique: "Tessendorf FFT, WebGPU compute, TSL",
     dark: true,
   },
   {

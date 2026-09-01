@@ -16,29 +16,53 @@ fourth is three.js driving WebGPU through TSL node materials.
 
 | Sketch | What it does |
 | --- | --- |
-| [Open Water](https://yingyen.com/lab/ocean) | Nine Gerstner waves, with foam where the surface folds |
+| [Open Water](https://yingyen.com/lab/ocean) | A Tessendorf FFT ocean, simulated on the GPU every frame |
 | [Curl Field](https://yingyen.com/lab/particles) | 163,840 particles advected through a curl noise field |
 | [Still Water](https://yingyen.com/lab/ripple) | The wave equation, solved in a ping-pong texture pair |
 | [Paper Weather](https://yingyen.com/lab/aurora) | Domain-warped fBm, sampled three levels deep |
 
-**Open Water.** A sine wave only moves the surface up and down, which is why
-a sum of sines reads as wobbling rather than water. A Gerstner wave also moves
-each point horizontally, against the direction of travel at the crest, so the
-water piles into a sharp peak and spreads into a wide flat trough. Nine of them
-run across a rough wind spectrum, each travelling at the speed deep water
-actually gives its wavelength, which is most of why the surface never appears
-to loop.
+**Open Water.** Real ocean renderers do not add waves together, they inverse
+transform a spectrum. A Phillips spectrum says how much energy the wind puts
+into each wavenumber; multiplying it by a complex Gaussian turns that smooth
+curve into an actual random sea; and an inverse FFT turns the whole spectrum
+into a height field in one shot. That is Tessendorf's method, and it is what
+film and game oceans have used for twenty years.
 
-Their derivatives are closed form, so the normal is exact and so is the
-Jacobian of the horizontal displacement. That second one places the foam:
-below one the surface is compressing, near zero it is folding over itself, and
-folding is what breaking is. Thresholding the fold rather than the height is
-the difference between foam on breaking crests and foam smeared over every
-tall smooth swell. Shading is Schlick against water's real index of refraction,
-two percent reflective head on and almost a mirror at grazing angles, over an
-analytic sky that is also the only light in the scene. The camera rides the
-swell from a CPU copy of the same wave sum, because an eye fixed at two units
-spends half its time inside a crest.
+Here it runs as WebGPU compute: a radix-2 butterfly with a CPU-precomputed
+twiddle table, twenty dispatches a frame, two cascades stacked in one buffer so
+the entire ocean transforms at once. Four things in it are worth writing down.
+
+Each buffer element is a `vec4` carrying two complex channels, so one butterfly
+pass moves four real fields rather than one. That works because two Hermitian
+spectra pack cleanly into the real and imaginary halves of a single complex
+transform, and height, x displacement and z displacement are all Hermitian by
+construction.
+
+The ping-pong parity runs across the horizontal and vertical phases as one
+chain of `2*log2(N)` swaps. Counting per phase instead only lands the result
+back in the source buffer when `log2(N)` happens to be even, and at every other
+size the vertical phase silently reads stale data. That bug survives visual
+inspection perfectly well, which is why the transform is gated at startup in
+development against two spectra whose results can be worked out by hand: a unit
+at DC must come back as a constant, and one step off DC must come back as a
+single cosine.
+
+The spectrum is calibrated through Parseval rather than by taste. The transform
+is the raw synthesis sum with no `1/N^2`, so the Phillips constant on its own
+says nothing about how tall the water will be; the variance of the height field
+is the sum of the squared spectrum, so scaling by the ratio of target to actual
+RMS produces a sea of exactly the significant wave height asked for, in metres.
+
+Foam comes from the determinant of the horizontal displacement Jacobian, taken
+from central differences of the displaced surface. Below one the water is
+compressing and near zero it is folding over itself, and folding is what
+breaking is. Thresholding height instead smears foam across every tall smooth
+swell.
+
+Shading is Schlick against water's real index of refraction, GGX for the sun
+glitter because a raised cosine either blooms into plastic or shrinks to a dot,
+and an analytic sky that is at once the background, the only light in the scene
+and every reflection in the water.
 
 **Curl Field.** Every particle is four floats, position and velocity, in one
 storage buffer. A compute pass rewrites that buffer in place each frame and

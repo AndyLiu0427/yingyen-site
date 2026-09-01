@@ -12,6 +12,15 @@ export type LabSketchMeta = {
 
 export const labSketches: LabSketchMeta[] = [
   {
+    slug: "elements",
+    name: "Four Elements",
+    blurb: "Fire, water, earth and wind, one shader each.",
+    detail:
+      "Four spheres, four node materials, no textures anywhere. Fire is basalt crust with molten seams, and because the noise field drifts downward in object space the seams read as heat climbing rather than rock sliding. Water is three sine waves crossing at odd ratios so the swell never quite repeats. Earth is voronoi plates over sedimentary banding, drifting slowly enough to read as tectonics. Wind is not a solid body at all: three nested additive shells sampling noise on a coordinate squashed along one axis, which stretches it into streaks, running at different speeds so the parallax between them reads as depth. Every displaced surface recomputes its own shading normal from two tangential samples of the field, which is the difference between geometry that has waves and lighting that knows about them.",
+    technique: "three.js WebGPURenderer, TSL node materials",
+    dark: true,
+  },
+  {
     slug: "particles",
     name: "Curl Field",
     blurb: "163,840 particles, one compute dispatch per frame.",

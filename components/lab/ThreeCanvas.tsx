@@ -3,26 +3,26 @@
 import type { ReactNode } from "react";
 import SketchFrame from "./SketchFrame";
 import {
-  useVgpuCanvas,
-  type VgpuCanvasOptions,
-  type VgpuSetup,
-} from "./useVgpuCanvas";
+  useThreeCanvas,
+  type ThreeCanvasOptions,
+  type ThreeSetup,
+} from "./useThreeCanvas";
 
-type Props = VgpuCanvasOptions & {
-  setup: VgpuSetup;
+type Props = ThreeCanvasOptions & {
+  setup: ThreeSetup;
   label: string;
   className?: string;
   fallback?: ReactNode;
 };
 
-export default function VgpuCanvas({
+export default function ThreeCanvas({
   setup,
   label,
   className,
   fallback,
   ...options
 }: Props) {
-  const { canvasRef, status } = useVgpuCanvas(setup, options);
+  const { canvasRef, status } = useThreeCanvas(setup, options);
   return (
     <SketchFrame
       canvasRef={canvasRef}

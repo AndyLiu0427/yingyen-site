@@ -76,8 +76,8 @@ export default function Home() {
             Lab
           </h2>
           <p className="mt-8 max-w-[44ch] leading-relaxed text-muted [text-wrap:pretty]">
-            Three WebGPU sketches, written in WGSL. The one behind this page is
-            the third of them.
+            Four WebGPU sketches, written in WGSL and TSL. The one behind this
+            page is the last of them.
           </p>
           <ul className="mt-8 border-t border-line">
             {labSketches.map((sketch) => (

@@ -10,15 +10,33 @@ shader running on the GPU, redrawn every frame.
 
 ## The lab
 
-Three sketches at `/lab`, each one a WGSL shader and roughly forty lines of
-TypeScript, built directly on [vgpu](https://github.com/vercel-labs/vgpu)
-rather than on a renderer or a scene graph.
+Four sketches at `/lab`. Three are raw WGSL on
+[vgpu](https://github.com/vercel-labs/vgpu) with no renderer underneath. The
+fourth is three.js driving WebGPU through TSL node materials.
 
 | Sketch | What it does |
 | --- | --- |
+| [Four Elements](https://yingyen.com/lab/elements) | Fire, water, earth and wind, one node material each |
 | [Curl Field](https://yingyen.com/lab/particles) | 163,840 particles advected through a curl noise field |
 | [Still Water](https://yingyen.com/lab/ripple) | The wave equation, solved in a ping-pong texture pair |
 | [Paper Weather](https://yingyen.com/lab/aurora) | Domain-warped fBm, sampled three levels deep |
+
+**Four Elements.** Four spheres, four materials, no textures anywhere. Fire is
+basalt crust with molten seams, and because the noise field drifts downward in
+object space the seams read as heat climbing rather than rock sliding. Water is
+three sine waves crossing at odd ratios so the swell never quite repeats. Earth
+is voronoi plates over sedimentary banding, drifting slowly enough to read as
+tectonics. Wind is not a solid body at all: three nested additive shells
+sampling noise on a coordinate squashed along one axis, which stretches it into
+streaks, running at different speeds so the parallax between them reads as
+depth.
+
+Every displaced surface recomputes its own shading normal from two tangential
+samples of the field. That is the difference between geometry that has waves
+and lighting that knows about them. One detail worth keeping: thin filaments
+want `smoothstep(width, 0, abs(noise))`, not `1 - abs(noise)`. Fractal noise
+clusters near zero, so the second form sits close to 1 nearly everywhere and
+floods the whole surface instead of drawing lines on it.
 
 **Curl Field.** Every particle is four floats, position and velocity, in one
 storage buffer. A compute pass rewrites that buffer in place each frame and
@@ -43,10 +61,12 @@ instead of leaving a mark.
 
 ## Notes on the build
 
-**One hook owns every canvas.** `components/lab/useVgpuCanvas.ts` holds the
-device, surface, clock and frame loop, so pausing offscreen, honouring
-`prefers-reduced-motion` and disposing on unmount are written once instead of
-four times. A sketch only returns the function that encodes a frame.
+**One hook per backend, one lifecycle.** `useVgpuCanvas` holds the vgpu
+device, surface, clock and frame loop; `useThreeCanvas` does the same job for
+three's `WebGPURenderer`. Both hand off to the same `whileVisible` helper and
+present through the same frame component, so pausing offscreen, honouring
+`prefers-reduced-motion` and disposing on unmount are written once rather than
+once per sketch. A sketch only returns the function that advances a frame.
 
 **Offscreen canvases stop.** An IntersectionObserver and a `visibilitychange`
 listener stop the loop when a sketch scrolls out of view or the tab is
@@ -69,9 +89,10 @@ to the next animation frame.
 
 ## Stack
 
-Next.js 16, React 19, Tailwind v4, TypeScript. WebGPU through vgpu 0.3.x,
-pinned because it is pre-1.0 and its API can still move. React Three Fiber and
-three.js for the fallback blob. Static export, deployed on Vercel.
+Next.js 16, React 19, Tailwind v4, TypeScript. WebGPU two ways: vgpu 0.3.x for
+the raw WGSL sketches, pinned because it is pre-1.0 and its API can still move,
+and three.js `WebGPURenderer` with TSL for the one that needs a scene. React
+Three Fiber for the fallback blob. Static export, deployed on Vercel.
 
 ## Running it
 

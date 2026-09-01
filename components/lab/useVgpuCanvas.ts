@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { clock, frame, frameLoop, init, surface } from "vgpu";
 import type { Frame, FrameLoopHandle, Gpu, Surface } from "vgpu";
+import { whileVisible } from "./visibility";
 
 export type VgpuStatus = "pending" | "ready" | "unsupported";
 
@@ -129,33 +130,21 @@ export function useVgpuCanvas(
       }
 
       let loop: FrameLoopHandle | null = null;
-      let onScreen = true;
 
-      const sync = () => {
-        const shouldRun = onScreen && document.visibilityState === "visible";
-        if (shouldRun && !loop && !created.disposed) {
-          loop = frameLoop(created, tick, fps ? { fps } : undefined);
-        } else if (!shouldRun && loop) {
-          loop.stop();
-          loop = null;
-        }
-      };
+      cleanups.push(
+        whileVisible(
+          canvas,
+          () => {
+            if (loop || created.disposed) return;
+            loop = frameLoop(created, tick, fps ? { fps } : undefined);
+          },
+          () => {
+            loop?.stop();
+            loop = null;
+          },
+        ),
+      );
 
-      // A portfolio page can hold several of these; offscreen canvases should
-      // not keep a laptop fan running.
-      const observer = new IntersectionObserver((entries) => {
-        onScreen = entries[entries.length - 1]?.isIntersecting ?? true;
-        sync();
-      });
-      observer.observe(canvas);
-      document.addEventListener("visibilitychange", sync);
-      sync();
-
-      cleanups.push(() => {
-        observer.disconnect();
-        document.removeEventListener("visibilitychange", sync);
-        loop?.stop();
-      });
       teardown = () => cleanups.forEach((fn) => fn());
     })();
 

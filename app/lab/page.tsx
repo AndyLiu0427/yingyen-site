@@ -25,15 +25,17 @@ export default function LabPage() {
             Lab
           </h1>
           <p className="mt-8 max-w-[46ch] animate-rise leading-relaxed text-muted [animation-delay:150ms] [text-wrap:pretty]">
-            Three sketches that run on the GPU directly, written in WGSL against{" "}
+            Four sketches that run on the GPU directly. Three are raw WGSL
+            against{" "}
             <a
               href="https://github.com/vercel-labs/vgpu"
               className="text-ink underline decoration-line underline-offset-4 transition-colors duration-150 hover:decoration-ink"
             >
               vgpu
             </a>
-            . Each one is a shader and roughly forty lines of TypeScript. They
-            need a browser with WebGPU: Chrome, Edge, or Safari 26.
+            , with no renderer underneath. The fourth is three.js driving
+            WebGPU through TSL node materials. They need a browser with WebGPU:
+            Chrome, Edge, or Safari 26.
           </p>
         </header>
 
@@ -80,7 +82,7 @@ export default function LabPage() {
 
         <footer className="mt-32 border-t border-line py-10">
           <p className="font-mono text-xs text-faint">
-            WGSL, compiled and bound by vgpu. No scene graph, no renderer.
+            WGSL and TSL, straight onto WebGPU.
           </p>
         </footer>
       </main>

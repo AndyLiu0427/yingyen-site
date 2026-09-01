@@ -1,6 +1,8 @@
-import BlobCanvas from "@/components/blob/BlobCanvas";
+import Link from "next/link";
+import HeroBackdrop from "@/components/hero/HeroBackdrop";
 import Hero from "@/components/hero/Hero";
 import WorkList from "@/components/WorkList";
+import { labSketches } from "@/lib/lab";
 import { projects, site } from "@/lib/site";
 
 const CRAFT = [
@@ -10,7 +12,7 @@ const CRAFT = [
   },
   {
     title: "Motion and 3D",
-    body: "GSAP, React Three Fiber, and the occasional hand-written shader. Motion that explains what just happened instead of decorating it.",
+    body: "GSAP, React Three Fiber, and WGSL compute shaders straight on the GPU. Motion that explains what just happened instead of decorating it.",
   },
   {
     title: "Tools for builders",
@@ -20,8 +22,8 @@ const CRAFT = [
 
 export default function Home() {
   return (
-    <div className="atelier-bg flex-1">
-      <BlobCanvas />
+    <div className="flex-1">
+      <HeroBackdrop />
 
       <Hero />
 
@@ -64,6 +66,42 @@ export default function Home() {
               ))}
             </ul>
           </div>
+        </section>
+
+        <section aria-labelledby="lab" className="py-28 sm:py-40">
+          <h2
+            id="lab"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-faint"
+          >
+            Lab
+          </h2>
+          <p className="mt-8 max-w-[44ch] leading-relaxed text-muted [text-wrap:pretty]">
+            Three WebGPU sketches, written in WGSL. The one behind this page is
+            the third of them.
+          </p>
+          <ul className="mt-8 border-t border-line">
+            {labSketches.map((sketch) => (
+              <li key={sketch.slug}>
+                <Link
+                  href={`/lab/${sketch.slug}`}
+                  className="group flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1 border-b border-line py-5 transition-colors duration-150 hover:bg-wash/40"
+                >
+                  <span className="font-display text-xl text-ink sm:text-2xl">
+                    {sketch.name}
+                  </span>
+                  <span className="font-mono text-xs text-faint transition-colors duration-150 group-hover:text-muted">
+                    {sketch.technique}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/lab"
+            className="mt-8 -m-2 inline-block p-2 font-mono text-xs uppercase tracking-[0.18em] text-muted underline decoration-line underline-offset-8 transition-colors duration-150 hover:text-ink"
+          >
+            Open the lab &rarr;
+          </Link>
         </section>
 
         <section aria-labelledby="work" className="py-28 sm:py-40">
@@ -122,7 +160,7 @@ export default function Home() {
             YingYen Liu, {new Date().getFullYear()}
           </p>
           <p className="font-mono text-xs text-faint">
-            the blob lives here. simplex noise, live in three.js
+            background rendered live on the GPU. WGSL, via vgpu
           </p>
         </footer>
       </main>

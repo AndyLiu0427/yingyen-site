@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { site } from "@/lib/site";
 
 export default function Hero() {
@@ -10,6 +11,12 @@ export default function Hero() {
           {site.role}
         </p>
         <nav className="flex animate-rise gap-5 font-mono text-sm [animation-delay:100ms]">
+          <Link
+            href="/lab"
+            className="-m-2 p-2 text-muted transition-colors duration-150 hover:text-ink"
+          >
+            lab
+          </Link>
           {site.links.map((link) => (
             <a
               key={link.label}

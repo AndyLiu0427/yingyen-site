@@ -1,64 +1,130 @@
-import Image from "next/image";
+import BlobCanvas from "@/components/blob/BlobCanvas";
+import Hero from "@/components/hero/Hero";
+import WorkList from "@/components/WorkList";
+import { projects, site } from "@/lib/site";
+
+const CRAFT = [
+  {
+    title: "Interface engineering",
+    body: "Design-system-grade React and TypeScript. Components with real states, real edge cases, and APIs the next engineer will thank you for.",
+  },
+  {
+    title: "Motion and 3D",
+    body: "GSAP, React Three Fiber, and the occasional hand-written shader. Motion that explains what just happened instead of decorating it.",
+  },
+  {
+    title: "Tools for builders",
+    body: "Editors, prompt generators, agent monitors. I like building the thing that makes the next thing faster to build.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="atelier-bg flex-1">
+      <BlobCanvas />
+
+      <Hero />
+
+      <main className="relative z-20 mx-auto w-full max-w-3xl px-6">
+        <section aria-labelledby="about" className="py-28 sm:py-40">
+          <h2
+            id="about"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-faint"
+          >
+            About
+          </h2>
+          <p className="mt-8 max-w-[24ch] font-display text-2xl font-light leading-snug text-ink sm:text-[2rem] [text-wrap:pretty]">
+            I care about the last five percent of an interface.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <p className="mt-6 max-w-[44ch] leading-relaxed text-muted [text-wrap:pretty]">
+            The easing curve, the empty state, the weight of a shadow, the
+            feel of a click. That last stretch is where an interface stops
+            being screens and starts being a product.
+          </p>
+        </section>
+
+        <section aria-labelledby="craft" className="py-28 sm:py-40">
+          <div className="sm:ml-auto sm:max-w-xl">
+            <h2
+              id="craft"
+              className="font-mono text-xs uppercase tracking-[0.2em] text-faint"
+            >
+              Craft
+            </h2>
+            <ul className="mt-8 space-y-12">
+              {CRAFT.map((item) => (
+                <li key={item.title}>
+                  <h3 className="font-display text-xl text-ink sm:text-2xl">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 max-w-[52ch] leading-relaxed text-muted [text-wrap:pretty]">
+                    {item.body}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section aria-labelledby="work" className="py-28 sm:py-40">
+          <h2
+            id="work"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-faint"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Work
+          </h2>
+          <div className="mt-8">
+            <WorkList projects={projects} />
+          </div>
+        </section>
+
+        <section aria-labelledby="now" className="py-28 sm:py-40">
+          <h2
+            id="now"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-faint"
           >
-            Documentation
+            Now
+          </h2>
+          <p className="mt-8 max-w-[26ch] font-display text-2xl font-light leading-snug text-ink sm:text-[2rem] [text-wrap:pretty]">
+            Shipping small, sharp tools.
+          </p>
+          <p className="mt-6 max-w-[44ch] leading-relaxed text-muted [text-wrap:pretty]">
+            MsgLens is the most recent one, a viewer that parses Outlook mail
+            entirely inside the browser. Before that, UIPrompt, a component
+            editor that turns a design into a spec-grade prompt. And I write
+            Practical AI Stack, hands-on guides to shipping with AI tools.
+          </p>
+        </section>
+
+        <section
+          aria-labelledby="contact"
+          className="flex min-h-[80svh] flex-col items-center justify-center py-28 text-center"
+        >
+          <h2
+            id="contact"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-faint"
+          >
+            Contact
+          </h2>
+          <p className="mt-6 font-display text-5xl font-light text-ink sm:text-7xl">
+            Say <span className="italic text-accent">hi</span>.
+          </p>
+          <a
+            href={site.links.find((l) => l.label === "email")?.href}
+            className="mt-8 text-lg text-muted underline decoration-line underline-offset-8 transition-colors duration-150 hover:text-ink"
+          >
+            ay0933@gmail.com
           </a>
-        </div>
+        </section>
+
+        <footer className="flex flex-wrap items-baseline justify-between gap-4 border-t border-line py-10">
+          <p className="font-mono text-xs text-faint">
+            YingYen Liu, {new Date().getFullYear()}
+          </p>
+          <p className="font-mono text-xs text-faint">
+            the blob lives here. simplex noise, live in three.js
+          </p>
+        </footer>
       </main>
     </div>
   );

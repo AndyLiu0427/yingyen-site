@@ -253,7 +253,19 @@ const DEFAULTS = {
   windAngle: 28,
   alignment: 0.85,
   choppiness: 1.75,
-  cascades: [{ tile: 389, gain: 1 }, { tile: 27.1, gain: 2.1 }] as Cascade[],
+  // Three disjoint bands. Each tile resolves wavenumbers from 2*pi/tile up to
+  // the next tile's floor, and the sizes share no common factor so the three
+  // never line up into a findable repeat.
+  // Three disjoint bands, sized so the longest wave is one the scene can
+  // actually show and the shortest lands near the aliasing cutoff. Energy in a
+  // Phillips band falls roughly as 1/k^2, so the gains are what stop the top
+  // band from swallowing the other two: without them the sea is nothing but
+  // enormous smooth dunes.
+  cascades: [
+    { tile: 173, gain: 1 },
+    { tile: 39.1, gain: 1.5 },
+    { tile: 7.7, gain: 4.2 },
+  ] as Cascade[],
   /** Significant wave height in metres, the sea state you actually want. */
   waveHeight: 3.1,
 };
@@ -352,7 +364,7 @@ export class OceanSimulation {
     // Softens the last octave before Nyquist so the smallest waves fade out
     // instead of aliasing. Set anywhere near a metre and it erases the whole
     // fine cascade, whose waves are all shorter than that.
-    const smallest = 0.05;
+    const smallest = 0.028;
 
     const phillips = (kx: number, kz: number) => {
       const kSq = kx * kx + kz * kz;

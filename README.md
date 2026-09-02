@@ -29,8 +29,12 @@ into a height field in one shot. That is Tessendorf's method, and it is what
 film and game oceans have used for twenty years.
 
 Here it runs as WebGPU compute: a radix-2 butterfly with a CPU-precomputed
-twiddle table, twenty dispatches a frame, two cascades stacked in one buffer so
-the entire ocean transforms at once. Four things in it are worth writing down.
+twiddle table, twenty three dispatches a frame, three cascades stacked in one
+buffer so the entire ocean transforms at once. Their tile sizes share no common
+factor, so the three never line up into a findable repeat, and their gains are
+what stop the longest band from swallowing the other two: energy in a Phillips
+band falls roughly as one over k squared, so left alone the sea is nothing but
+enormous smooth dunes. Five things in it are worth writing down.
 
 Each buffer element is a `vec4` carrying two complex channels, so one butterfly
 pass moves four real fields rather than one. That works because two Hermitian
@@ -52,6 +56,17 @@ is the raw synthesis sum with no `1/N^2`, so the Phillips constant on its own
 says nothing about how tall the water will be; the variance of the height field
 is the sum of the squared spectrum, so scaling by the ratio of target to actual
 RMS produces a sea of exactly the significant wave height asked for, in metres.
+
+The colour is not chosen either. Water absorbs red about seventy times more
+strongly than blue (Pope and Fry 1997, integrating cavity measurements), which
+is the entire reason the sea is blue rather than grey. Feeding the absorption
+and backscatter coefficients through Morel and Prieur's deep water reflectance,
+`R = f * b_b / (a + b_b)`, gives the palette directly, and the light that
+crosses a crest is attenuated by Beer-Lambert over the path, which is why a
+backlit wave glows cyan: the red is gone within two metres. One number, the
+chlorophyll concentration, walks the whole Jerlov scale, because Morel tied the
+types to it. Raise it and the blue is eaten first, and the water turns green at
+about the concentration where the real Jerlov scale turns green too.
 
 Foam comes from the determinant of the horizontal displacement Jacobian, taken
 from central differences of the displaced surface. Below one the water is

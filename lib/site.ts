@@ -2,7 +2,7 @@ export const site = {
   name: "YingYen Liu",
   role: "Frontend Engineer",
   tagline:
-    "I design interfaces, then build the tools that ship them. Most recently MsgLens, a .msg viewer that parses your mail without ever uploading it.",
+    "I design interfaces, then build the tools that ship them. Lately, shaders: the field behind this page is running on your GPU, and there is an ocean in the Lab.",
   links: [
     { label: "github", href: "https://github.com/AndyLiu0427" },
     { label: "x", href: "https://x.com/yingyen_" },

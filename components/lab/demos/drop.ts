@@ -1,4 +1,6 @@
-import { effect, sampler, target } from "vgpu";
+import { effect } from "vgpu";
+import { lens } from "./lens";
+import { PHOTO_WGSL, photoScenes } from "./photo-scenes";
 import type { VgpuSetup } from "../useVgpuCanvas";
 import { waterOptics } from "./ocean-optics";
 
@@ -21,8 +23,8 @@ import { waterOptics } from "./ocean-optics";
  * Light: Fresnel and Snell at the first surface, a march to the far side,
  * total internal reflection when Snell has no answer, Beer-Lambert over the
  * path with Pope and Fry's absorption for pure water, and water's real
- * dispersion at the exit. The world around it is a photograph: an HDRI by
- * Poly Haven (CC0), stored log-encoded so eight bits carry seventeen stops.
+ * dispersion at the exit. The world around it is a photograph, see
+ * photo-scenes.ts, and the frame goes through lens.ts for bloom and tone.
  */
 
 /** Radius in metres. Six centimetres: a drop the size of a grapefruit. */
@@ -40,45 +42,8 @@ const RIPPLES = 4;
 
 const FOV = 46;
 
-/**
- * Long edge of the ray traced frame, in pixels. Three refraction paths per
- * pixel is a lot of work for a retina display to do twice over; the composite
- * pass scales it up. Raise it if the rim looks soft on a big screen.
- */
-const MAX_RENDER_EDGE = 1600;
-
 /** Background blur, as a fraction of the frame width. What a macro lens does. */
 const DOF_BLUR = 0.009;
-
-/** Bloom: where the glow starts, in linear radiance, and how much is added. */
-const BLOOM_THRESHOLD = 1.5;
-const BLOOM_STRENGTH = 0.18;
-const BLUR_SIGMA = 3;
-const BLUR_TAPS = 7;
-const BLUR_WEIGHTS = (() => {
-  const raw = Array.from({ length: BLUR_TAPS }, (_, i) =>
-    Math.exp(-(i * i) / (2 * BLUR_SIGMA * BLUR_SIGMA)),
-  );
-  const total = raw[0] + 2 * raw.slice(1).reduce((a, b) => a + b, 0);
-  return raw.map((w) => w / total);
-})();
-
-/** How the environment was packed: v = log2(1 + L * K) / M. */
-const ENV_K = 32;
-const ENV_M = 17;
-
-/**
- * The places the drop can sit. All Poly Haven HDRIs (CC0), each exposed to the
- * same key so the camera does not have to adjust between them. yaw turns the
- * photograph so the part worth looking at is behind the drop.
- */
-const SCENES = [
-  { url: "/env/road.webp", yaw: 0 }, // rural_asphalt_road
-  { url: "/env/city.webp", yaw: 0.08 }, // shanghai_bund, at night
-  { url: "/env/studio.webp", yaw: 0.2 }, // studio_small_09, facing the softboxes
-  { url: "/env/dawn.webp", yaw: 0 }, // kiara_1_dawn
-];
-const FADE_SECONDS = 0.8;
 
 /** Rayleigh frequency and Lamb damping time for mode l. */
 function rayleigh(l: number) {
@@ -187,15 +152,9 @@ struct Params {
   rip2: vec4f,
   rip3: vec4f,
   ripAmp: vec4f,
-  // Two photographs and a crossfade between them: yaw turns each one.
-  yawA: f32,
-  yawB: f32,
-  fade: f32,
 }
 @group(0) @binding(0) var<uniform> p: Params;
-@group(0) @binding(1) var envA: texture_2d<f32>;
-@group(0) @binding(2) var envB: texture_2d<f32>;
-@group(0) @binding(3) var envSampler: sampler;
+${PHOTO_WGSL}
 
 const R = ${RADIUS};
 // Water at 680, 550 and 440nm. Blue bends most, which is the rim fringe.
@@ -204,8 +163,6 @@ const RIP_K = ${ripple.k.toFixed(3)};
 const RIP_W = ${ripple.omega.toFixed(3)};
 const RIP_V = ${ripple.groupVelocity.toFixed(4)};
 const RIP_LIFE = ${RIPPLE_LIFE};
-const ENV_K = ${ENV_K}.0;
-const ENV_M = ${ENV_M}.0;
 
 /** A wave packet that has travelled dist along the surface for age seconds. */
 fn packet(dist: f32, age: f32) -> f32 {
@@ -266,21 +223,6 @@ fn fresnel(n1: f32, n2: f32, normal: vec3f, incident: vec3f) -> f32 {
   }
   let x = 1.0 - cosX;
   return r0 + (1.0 - r0) * x * x * x * x * x;
-}
-
-/** One photograph, looked up by direction and unpacked from its log encoding. */
-fn lookup(tex: texture_2d<f32>, d: vec3f, lod: f32, yaw: f32) -> vec3f {
-  let u = 0.5 + atan2(d.x, -d.z) / 6.2831853 + yaw;
-  let v = 0.5 - asin(clamp(d.y, -1.0, 1.0)) / 3.1415927;
-  let packed = textureSampleLevel(tex, envSampler, vec2f(u, v), lod).rgb;
-  return (exp2(packed * ENV_M) - 1.0) / ENV_K;
-}
-
-/** The world around the drop; two worlds while one is fading into the next. */
-fn envColor(d: vec3f, lod: f32) -> vec3f {
-  let a = lookup(envA, d, lod, p.yawA);
-  if (p.fade <= 0.0) { return a; }
-  return mix(a, lookup(envB, d, lod, p.yawB), p.fade);
 }
 
 /**
@@ -376,52 +318,6 @@ fn traceInside(pos: vec3f, n: vec3f, rd: vec3f, ior: f32, absorb: f32, channel: 
 }
 `;
 
-/** What is bright enough to bleed. */
-const BRIGHT = /* wgsl */ `
-@group(0) @binding(0) var scene: texture_2d<f32>;
-@group(0) @binding(1) var samp: sampler;
-@fragment fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
-  let c = textureSampleLevel(scene, samp, uv, 0.0).rgb;
-  let peak = max(max(c.r, c.g), c.b);
-  let keep = max(peak - ${BLOOM_THRESHOLD}, 0.0) / max(peak, 1e-4);
-  return vec4f(c * keep, 1.0);
-}
-`;
-
-/** Separable Gaussian, run once across and once down at quarter resolution. */
-const BLUR = /* wgsl */ `
-struct Params { step: vec2f }
-@group(0) @binding(0) var src: texture_2d<f32>;
-@group(0) @binding(1) var samp: sampler;
-@group(0) @binding(2) var<uniform> p: Params;
-const W = array<f32, ${BLUR_TAPS}>(${BLUR_WEIGHTS.map((w) => w.toFixed(6)).join(", ")});
-@fragment fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
-  var c = textureSampleLevel(src, samp, uv, 0.0).rgb * W[0];
-  for (var i = 1; i < ${BLUR_TAPS}; i++) {
-    let o = p.step * f32(i);
-    c += (textureSampleLevel(src, samp, uv + o, 0.0).rgb + textureSampleLevel(src, samp, uv - o, 0.0).rgb) * W[i];
-  }
-  return vec4f(c, 1.0);
-}
-`;
-
-/** The lens: glow added back, then the tone curve and gamma. */
-const COMPOSITE = /* wgsl */ `
-@group(0) @binding(0) var scene: texture_2d<f32>;
-@group(0) @binding(1) var glow: texture_2d<f32>;
-@group(0) @binding(2) var samp: sampler;
-
-fn aces(x: vec3f) -> vec3f {
-  return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), vec3f(0.0), vec3f(1.0));
-}
-
-@fragment fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
-  let hdr = textureSampleLevel(scene, samp, uv, 0.0).rgb;
-  let bloom = textureSampleLevel(glow, samp, uv, 0.0).rgb * ${BLOOM_STRENGTH};
-  return vec4f(pow(aces(hdr + bloom), vec3f(1.0 / 2.2)), 1.0);
-}
-`;
-
 const normalize3 = (v: number[]) => {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
@@ -458,146 +354,17 @@ function checkShapes() {
   }
 }
 
-/** A texture the shader can sample; starts as one grey texel until the photo lands. */
-function envTexture(device: GPUDevice, width: number, height: number, mips = 1) {
-  return device.createTexture({
-    label: "drop-env",
-    size: [width, height],
-    mipLevelCount: mips,
-    format: "rgba8unorm",
-    usage:
-      GPUTextureUsage.TEXTURE_BINDING |
-      GPUTextureUsage.COPY_DST |
-      GPUTextureUsage.RENDER_ATTACHMENT,
-  });
-}
-
 export const drop: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMotion }) => {
   if (process.env.NODE_ENV === "development") checkShapes();
 
-  const device = gpu.device.gpu;
-  // Mid grey in the log encoding, so the first frames are a drop in fog rather
-  // than a drop in a void.
-  const grey = envTexture(device, 1, 1);
-  device.queue.writeTexture({ texture: grey }, new Uint8Array([120, 120, 120, 255]), {}, [1, 1]);
-  const envSampler = sampler(gpu, {
-    magFilter: "linear",
-    minFilter: "linear",
-    mipmapFilter: "linear",
-    addressModeU: "repeat",
-    addressModeV: "clamp-to-edge",
-  });
-  const samp = sampler(gpu, { magFilter: "linear", minFilter: "linear" });
-
-  // Ray tracing lands in a linear HDR frame; the glow is built at quarter size.
-  const renderSize = ([w, h]: readonly [number, number]) => {
-    const scale = Math.min(1, MAX_RENDER_EDGE / Math.max(w, h, 1));
-    return [Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))] as [number, number];
-  };
-  const quarter = ([w, h]: readonly [number, number]) =>
-    [Math.max(1, Math.ceil(w / 4)), Math.max(1, Math.ceil(h / 4))] as [number, number];
-  let frameSize = renderSize(surface.size as [number, number]);
-  const scene = target(gpu, { size: frameSize, format: "rgba16float" });
-  const glowA = target(gpu, { size: quarter(frameSize), format: "rgba16float" });
-  const glowB = target(gpu, { size: quarter(frameSize), format: "rgba16float" });
-  onCleanup(
-    surface.onResize((event) => {
-      frameSize = renderSize([event.width, event.height]);
-      scene.resize(frameSize);
-      glowA.resize(quarter(frameSize));
-      glowB.resize(quarter(frameSize));
-    }),
-  );
-
+  const view = lens(gpu, surface, onCleanup);
   const pass = effect(gpu, SCENE, {
     label: "drop-scene",
     // Pure water: chlorophyll zero leaves only Pope and Fry's measurement.
-    set: { absorb: waterOptics(0).attenuation, envA: grey, envB: grey, envSampler },
+    set: { absorb: waterOptics(0).attenuation },
   });
-  const bright = effect(gpu, BRIGHT, { label: "drop-bright", set: { samp } });
-  const blur = effect(gpu, BLUR, { label: "drop-blur", set: { samp } });
-  const composite = effect(gpu, COMPOSITE, { label: "drop-composite", set: { samp } });
-
-  let disposed = false;
-  type Photo = { texture: GPUTexture; width: number };
-  const photos = new Map<number, Promise<Photo>>();
-  // Resolved photos, reachable synchronously: swapping one in has to happen
-  // in the same frame the crossfade ends, or the old scene shows for a frame.
-  const ready = new Map<number, Photo>();
-  onCleanup(() => {
-    disposed = true;
-    grey.destroy();
-    for (const photo of photos.values()) void photo.then((p) => p.texture.destroy());
-  });
-
-  /** Fetches a scene's photograph once and builds its mip levels. */
-  const photo = (index: number) => {
-    let loading = photos.get(index);
-    if (loading) return loading;
-    loading = (async () => {
-      const blob = await (await fetch(SCENES[index].url)).blob();
-      const options: ImageBitmapOptions = {
-        colorSpaceConversion: "none",
-        premultiplyAlpha: "none",
-        resizeQuality: "high",
-      };
-      let level = await createImageBitmap(blob, options);
-      const { width, height } = level;
-      // Mip levels are what the background blur samples. WebGPU does not
-      // build them, so the photo is halved and halved again, off the main
-      // thread, and each half is copied into its level.
-      const mips = 7;
-      const texture = envTexture(device, width, height, mips);
-      for (let i = 0; i < mips; i++) {
-        if (i > 0) {
-          const next = await createImageBitmap(level, {
-            ...options,
-            resizeWidth: Math.max(1, width >> i),
-            resizeHeight: Math.max(1, height >> i),
-          });
-          level.close();
-          level = next;
-        }
-        device.queue.copyExternalImageToTexture(
-          { source: level },
-          { texture, mipLevel: i },
-          [level.width, level.height],
-        );
-      }
-      level.close();
-      const result = { texture, width };
-      ready.set(index, result);
-      return result;
-    })();
-    photos.set(index, loading);
-    return loading;
-  };
-
-  // Scene A is what is shown; B is what it is fading into, if anything. The
-  // first photo fades in from grey the same way the others fade in from it.
-  let current = 0;
-  let incoming: number | null = null;
-  let fadeStart = 0;
-  let envWidth = 1;
+  const scenes = photoScenes(gpu, pass, onCleanup);
   let now = 0;
-
-  const fadeTo = (index: number) => {
-    void photo(index).then((loaded) => {
-      if (disposed || incoming !== null) return;
-      pass.set({ envB: loaded.texture, yawB: SCENES[index].yaw });
-      incoming = index;
-      // Uploading a 4k photo stalls the loop for a moment, so the clock is
-      // read on the first frame that draws the fade, not here, or it would
-      // start part way in.
-      fadeStart = -1;
-    });
-  };
-  fadeTo(0);
-
-  const nextScene = () => {
-    if (incoming !== null) return;
-    fadeTo((current + 1) % SCENES.length);
-  };
 
   const mode2 = new Mode(2, 6, 0.22);
   const mode3 = new Mode(3, 13, 0.1);
@@ -678,7 +445,7 @@ export const drop: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMotion
     const at = pick(event);
     // Tap the drop to poke it; tap the world behind it to change the world.
     if (!at) {
-      nextScene();
+      scenes.next();
       return;
     }
     poke(at.axis, 0.2, 0.004);
@@ -695,21 +462,8 @@ export const drop: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMotion
 
   return (frame, time, delta) => {
     now = time;
-    let fade = 0;
-    if (incoming !== null) {
-      if (fadeStart < 0) fadeStart = time;
-      fade = Math.min(1, (time - fadeStart) / FADE_SECONDS);
-      if (fade >= 1) {
-        current = incoming;
-        incoming = null;
-        fade = 0;
-        const done = ready.get(current);
-        if (done) {
-          envWidth = done.width;
-          pass.set({ envA: done.texture, yawA: SCENES[current].yaw });
-        }
-      }
-    }
+    scenes.frame(time);
+    const [fw, fh] = view.size;
     if (!reducedMotion) {
       // Left alone it gets the odd tap, so a gallery card still moves.
       if (time > nextNudge && performance.now() - lastTouched > 2500) {
@@ -719,23 +473,25 @@ export const drop: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMotion
       const dt = Math.min(delta, 1 / 20);
       mode2.step(dt);
       mode3.step(dt);
-      aim(Math.sin(time * 0.09) * 0.45, frameSize[0] / frameSize[1]);
+      aim(Math.sin(time * 0.09) * 0.45, fw / fh);
     }
 
     const q = mode2.x;
     const c = mode3.x;
     // Blur radius in photo texels, given how many texels a pixel spans here.
-    const aspect = frameSize[0] / frameSize[1];
+    const aspect = fw / fh;
     const horizontalFov = (2 * Math.atan(tanHalf * aspect) * 180) / Math.PI;
-    const texelsPerPixel = (envWidth * (horizontalFov / 360)) / frameSize[0];
-    const dofLod = Math.max(0, Math.min(6, Math.log2((DOF_BLUR * frameSize[0]) / texelsPerPixel)));
+    // Blur radius as a fraction of the view is a fixed number of photo texels,
+    // whatever the render size, so retina and not look the same.
+    const blurTexels = DOF_BLUR * scenes.width * (horizontalFov / 360);
+    const dofLod = Math.max(0, Math.min(6, Math.log2(Math.max(blurTexels, 1))));
     // A pixel on the drop spans px metres; the normal turns px / R over it and
     // the mirrored ray twice that, which is this many photo texels.
-    const px = (Math.hypot(...camera.pos) * 2 * tanHalf) / frameSize[1];
-    const mirrorTexels = ((2 * px) / RADIUS) * (envWidth / (2 * Math.PI));
+    const px = (Math.hypot(...camera.pos) * 2 * tanHalf) / fh;
+    const mirrorTexels = ((2 * px) / RADIUS) * (scenes.width / (2 * Math.PI));
     const reflLod = Math.max(0, Math.min(6, Math.log2(Math.max(mirrorTexels, 1e-3))));
     pass.set({
-      size: frameSize,
+      size: [fw, fh],
       tanHalf,
       time,
       dofLod,
@@ -755,19 +511,8 @@ export const drop: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMotion
       rip2: ripples.src[2],
       rip3: ripples.src[3],
       ripAmp: ripples.amp,
-      fade,
     });
-    frame.pass(scene, pass);
-
-    const [gw, gh] = glowA.size;
-    bright.set({ scene });
-    frame.pass(glowA, bright);
-    blur.set({ src: glowA, step: [1.5 / gw, 0] });
-    frame.pass(glowB, blur);
-    blur.set({ src: glowB, step: [0, 1.5 / gh] });
-    frame.pass(glowA, blur);
-
-    composite.set({ scene, glow: glowA });
-    frame.pass(surface, composite);
+    frame.pass(view.scene, pass);
+    view.finish(frame);
   };
 };

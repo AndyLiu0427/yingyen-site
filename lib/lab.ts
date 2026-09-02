@@ -33,6 +33,16 @@ export const labSketches: LabSketchMeta[] = [
     technique: "Ray-marched SDF, Rayleigh modes, Fresnel, Beer-Lambert, HDRI",
   },
   {
+    slug: "rasengan",
+    preview: "/previews/lab-rasengan.webp",
+    name: "Rasengan!",
+    blurb: "Naruto's Rasengan: chakra spun several ways at once, held in a ball.",
+    detail:
+      "Built from one frame: the Parent and Child Rasengan at the end of Boruto: Naruto the Movie, where the ball is wound with hundreds of thin, smooth, bright lines at every angle, crossing into a net that thickens toward the rim, around a core too bright to see into. Each line here is a circle on the sphere, the set of directions whose dot product with some axis equals some offset: one multiply per line, no noise anywhere, so every thread is clean. Seventy-two of them in three groups, each group turning about its own axis at its own speed, one against the others, so the net shears the way chakra spun several ways at once would. Three concentric shells of it, front and back faces each, give the cage depth, and by projection alone the lines crowd toward the rim as they do in the film. Each thread breathes in brightness on its own clock, which is the flicker. A few brighter arcs orbit outside the ball on tilted circles, dimmed where they pass behind it. The body is a soft luminous volume that thins out with radius rather than stopping, so the glow has no edge; the net does, because in the film it does. The world behind is bent, dimmed and tinted the way a bright translucent sphere would, and just outside the shell it shimmers and is dragged into a spiral while chakra peels off in soft tongues. Press and hold it and it charges: bigger, brighter, faster, up to 1.6 times, and it settles when you let go. The world behind it changes every twelve seconds, or when you click it: a field under the moon, a pine forest, a meadow at dusk, a rocky valley at dawn, the kind of places these fights happen in. The lens and bloom are the same as the water drop's.",
+    technique: "A cage of 72 circles on three shells, orbiting arcs, HDR bloom",
+    dark: true,
+  },
+  {
     slug: "particles",
     preview: "/previews/lab-particles.webp",
     name: "Curl Field",

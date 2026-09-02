@@ -6,6 +6,7 @@ import { aurora } from "./demos/aurora";
 import { drop } from "./demos/drop";
 import { ocean } from "./demos/ocean";
 import { particles } from "./demos/particles";
+import { rasengan } from "./demos/rasengan";
 import { ripple } from "./demos/ripple";
 import type { ThreeCanvasOptions, ThreeSetup } from "./useThreeCanvas";
 import type { VgpuCanvasOptions, VgpuSetup } from "./useVgpuCanvas";
@@ -34,6 +35,7 @@ const SKETCHES: Record<string, Entry> = {
   },
   ocean: { backend: "three", setup: ocean },
   drop: { backend: "vgpu", setup: drop },
+  rasengan: { backend: "vgpu", setup: rasengan },
 };
 
 type Props = {

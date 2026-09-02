@@ -22,9 +22,9 @@ import type { Scene } from "./photo-scenes";
  * net that thickens toward the rim, around a core too bright to see into.
  * Each line is a circle on the sphere, the set of directions n with
  * dot(n, a) = h for some axis a and offset h: one dot product per line, no
- * noise, so every thread is clean. Seventy-two of them in three groups, each
+ * noise, so every thread is clean. A hundred and forty-four of them in four groups, each
  * group turning about its own axis at its own speed, one against the others,
- * so the net shears the way chakra spun several ways at once would. Three
+ * so the net shears the way chakra spun several ways at once would. Four
  * shells of it, front and back faces each, give the cage depth. Each thread
  * also breathes in brightness on its own clock, which is the flicker.
  *
@@ -37,7 +37,7 @@ import type { Scene } from "./photo-scenes";
 const RADIUS = 0.06;
 const FOV = 46;
 /** Background blur, as a fraction of the frame width. A fight scene stays legible. */
-const DOF_BLUR = 0.0035;
+const DOF_BLUR = 0.0015;
 /**
  * Places a ninja would fight in. Poly Haven HDRIs (CC0): a field under the
  * moon, a pine forest, a meadow at dusk, a rocky valley at dawn.
@@ -71,8 +71,8 @@ const ORBITS = [
   return { ...o, axis: o.axis.map((v) => v / n) };
 });
 
-/** Circles per group, and groups. 72 lines: what the film's net looks like. */
-const CIRCLES_PER_GROUP = 24;
+/** Circles per group, and groups. 144 lines: as dense as the film's net. */
+const CIRCLES_PER_GROUP = 36;
 
 /**
  * Three groups of circles on the sphere. Each group rides its own axis at its
@@ -84,6 +84,7 @@ const GROUPS = [
   { axis: [0.2, 1.0, 0.15], speed: 0.45 },
   { axis: [1.0, 0.25, -0.3], speed: -0.32 },
   { axis: [-0.4, 0.6, 1.0], speed: 0.6 },
+  { axis: [0.7, -0.5, 0.5], speed: -0.5 },
 ].map((g) => {
   const n = Math.hypot(...g.axis);
   return { ...g, axis: g.axis.map((v) => v / n) };
@@ -181,7 +182,7 @@ ${GROUPS.map((g, gi) => `  {
       let c = CIRCLES[i];
       let d = abs(dot(q, c.xyz) - c.w);
       let breathe = 0.55 + 0.45 * sin(spin * (1.1 + f32(i) * 0.09) + f32(i) * 1.7);
-      s += smoothstep(0.014, 0.003, d) * breathe;
+      s += smoothstep(0.009, 0.002, d) * breathe;
     }
   }`).join("\n")}
   return s;
@@ -198,14 +199,15 @@ fn shells(closest: vec3f, rd: vec3f, b: f32, r: f32) -> vec2f {
   var deep = 0.0;
 ${[
   { radius: 1.0, front: 1.0, back: 0.3, fade: 0.0 },
-  { radius: 0.74, front: 0.55, back: 0.18, fade: 0.1 },
-  { radius: 0.5, front: 0.35, back: 0.1, fade: 0.1 },
+  { radius: 0.85, front: 0.6, back: 0.2, fade: 0.1 },
+  { radius: 0.68, front: 0.45, back: 0.15, fade: 0.1 },
+  { radius: 0.5, front: 0.3, back: 0.1, fade: 0.1 },
 ].map((k, i) => `  if (b < ${k.radius.toFixed(2)}) {
     let h = sqrt(${k.radius.toFixed(2)} * ${k.radius.toFixed(2)} - b * b) * r;
     let edge = ${k.fade > 0 ? `smoothstep(${k.radius.toFixed(2)}, ${(k.radius - k.fade).toFixed(2)}, b)` : "1.0"};
     let t = (cage(normalize(closest - rd * h), p.spin) * ${k.front.toFixed(2)} + cage(normalize(closest + rd * h), p.spin) * ${k.back.toFixed(2)}) * edge;
     s += t;
-    deep += t * ${(i / 2).toFixed(2)};
+    deep += t * ${(i / 3).toFixed(2)};
   }`).join("\n")}
   return vec2f(s, deep);
 }
@@ -315,7 +317,7 @@ ${ORBITS.map((o) => `  arcs += orbit(rob, rd, vec3f(${o.axis.map((v) => v.toFixe
     color += body * inside * inside * 0.55 * glow;
 
     // Thread: whiter the deeper it is.
-    color += mix(CYAN, CORE, clamp(white * 0.8 + 0.35, 0.0, 1.0)) * s * 0.85 * glow;
+    color += mix(CYAN, CORE, clamp(white * 0.8 + 0.35, 0.0, 1.0)) * s * 0.95 * glow;
     // The film's rim: a soft band of saturated blue just inside the edge.
     color += CHAKRA * smoothstep(0.55, 0.98, b) * smoothstep(1.06, 0.98, b) * 0.35 * glow;
 

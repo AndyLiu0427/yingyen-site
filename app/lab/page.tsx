@@ -6,7 +6,7 @@ import { labSketches } from "@/lib/lab";
 export const metadata: Metadata = {
   title: "Lab · YingYen Liu",
   description:
-    "WebGPU sketches: compute-shader particles, a ping-pong wave solver, and domain-warped noise. Built with vgpu.",
+    "WebGPU sketches: an FFT ocean, a ray traced drop of water, compute-shader particles, a ping-pong wave solver, and domain-warped noise.",
 };
 
 export default function LabPage() {
@@ -25,7 +25,7 @@ export default function LabPage() {
             Lab
           </h1>
           <p className="mt-8 max-w-[46ch] animate-rise leading-relaxed text-muted [animation-delay:150ms] [text-wrap:pretty]">
-            Four sketches that run on the GPU directly. Three are raw WGSL
+            Five sketches that run on the GPU directly. Four are raw WGSL
             against{" "}
             <a
               href="https://github.com/vercel-labs/vgpu"
@@ -33,7 +33,7 @@ export default function LabPage() {
             >
               vgpu
             </a>
-            , with no renderer underneath. The fourth is three.js driving
+            , with no renderer underneath. The fifth is three.js driving
             WebGPU through TSL node materials. They need a browser with WebGPU:
             Chrome, Edge, or Safari 26.
           </p>

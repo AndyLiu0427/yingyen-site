@@ -3,6 +3,7 @@
 import ThreeCanvas from "./ThreeCanvas";
 import VgpuCanvas from "./VgpuCanvas";
 import { aurora } from "./demos/aurora";
+import { drop } from "./demos/drop";
 import { ocean } from "./demos/ocean";
 import { particles } from "./demos/particles";
 import { ripple } from "./demos/ripple";
@@ -32,6 +33,7 @@ const SKETCHES: Record<string, Entry> = {
     options: { clearColor: [0.043, 0.051, 0.071, 1] },
   },
   ocean: { backend: "three", setup: ocean },
+  drop: { backend: "vgpu", setup: drop },
 };
 
 type Props = {

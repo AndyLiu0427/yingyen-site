@@ -39,9 +39,17 @@ type Props = {
   label: string;
   className?: string;
   fps?: number;
+  /** Still shown where the browser cannot run the live version. */
+  preview?: string;
 };
 
-export default function LabSketch({ slug, label, className, fps }: Props) {
+export default function LabSketch({
+  slug,
+  label,
+  className,
+  fps,
+  preview,
+}: Props) {
   const sketch = SKETCHES[slug];
   if (!sketch) return null;
 
@@ -52,6 +60,7 @@ export default function LabSketch({ slug, label, className, fps }: Props) {
         setup={sketch.setup}
         label={label}
         className={className}
+        preview={preview}
       />
     );
   }
@@ -63,6 +72,7 @@ export default function LabSketch({ slug, label, className, fps }: Props) {
       label={label}
       className={className}
       fps={fps ?? sketch.options?.fps}
+      preview={preview}
     />
   );
 }

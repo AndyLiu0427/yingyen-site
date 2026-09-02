@@ -8,11 +8,14 @@ export type LabSketchMeta = {
   technique: string;
   /** Dark sketches get a dark card so the frame does not fight the render. */
   dark?: boolean;
+  /** Still frame, shown where the browser cannot run the live version. */
+  preview: string;
 };
 
 export const labSketches: LabSketchMeta[] = [
   {
     slug: "ocean",
+    preview: "/previews/lab-ocean.webp",
     name: "Open Water",
     blurb: "A Tessendorf FFT ocean, simulated on the GPU every frame.",
     detail:
@@ -22,6 +25,7 @@ export const labSketches: LabSketchMeta[] = [
   },
   {
     slug: "particles",
+    preview: "/previews/lab-particles.webp",
     name: "Curl Field",
     blurb: "163,840 particles, one compute dispatch per frame.",
     detail:
@@ -31,6 +35,7 @@ export const labSketches: LabSketchMeta[] = [
   },
   {
     slug: "ripple",
+    preview: "/previews/lab-ripple.webp",
     name: "Still Water",
     blurb: "A wave equation solved in a ping-pong texture pair.",
     detail:
@@ -39,6 +44,7 @@ export const labSketches: LabSketchMeta[] = [
   },
   {
     slug: "aurora",
+    preview: "/previews/lab-aurora.webp",
     name: "Paper Weather",
     blurb: "Domain-warped noise, sampled three times deep.",
     detail:

@@ -128,8 +128,9 @@ export default function Home() {
           </p>
           <p className="mt-6 max-w-[44ch] leading-relaxed text-muted [text-wrap:pretty]">
             MsgLens is the most recent one, a viewer that parses Outlook mail
-            entirely inside the browser. Before that, UIPrompt, a component
-            editor that turns a design into a spec-grade prompt. And I write
+            entirely inside the browser. Alongside it, the Lab: four sketches
+            that run straight on the GPU, most recently an ocean built the way
+            film ocean is, by inverse transforming a wave spectrum. And I write
             Practical AI Stack, hands-on guides to shipping with AI tools.
           </p>
         </section>

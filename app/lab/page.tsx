@@ -58,6 +58,7 @@ export default function LabPage() {
                     label={`${sketch.name}: ${sketch.blurb}`}
                     className="absolute inset-0"
                     fps={30}
+                    preview={sketch.preview}
                   />
                 </div>
 

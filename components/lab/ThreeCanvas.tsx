@@ -13,6 +13,7 @@ type Props = ThreeCanvasOptions & {
   label: string;
   className?: string;
   fallback?: ReactNode;
+  preview?: string;
 };
 
 export default function ThreeCanvas({
@@ -20,6 +21,7 @@ export default function ThreeCanvas({
   label,
   className,
   fallback,
+  preview,
   ...options
 }: Props) {
   const { canvasRef, status } = useThreeCanvas(setup, options);
@@ -30,6 +32,7 @@ export default function ThreeCanvas({
       label={label}
       className={className}
       fallback={fallback}
+      preview={preview}
     />
   );
 }

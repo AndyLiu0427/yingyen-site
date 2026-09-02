@@ -58,6 +58,7 @@ export default async function SketchPage({ params }: Props) {
             slug={sketch.slug}
             label={`${sketch.name}: ${sketch.blurb}`}
             className="relative aspect-[16/10] w-full sm:aspect-[2/1]"
+            preview={sketch.preview}
           />
         </div>
 

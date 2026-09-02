@@ -13,6 +13,7 @@ type Props = VgpuCanvasOptions & {
   label: string;
   className?: string;
   fallback?: ReactNode;
+  preview?: string;
 };
 
 export default function VgpuCanvas({
@@ -20,6 +21,7 @@ export default function VgpuCanvas({
   label,
   className,
   fallback,
+  preview,
   ...options
 }: Props) {
   const { canvasRef, status } = useVgpuCanvas(setup, options);
@@ -30,6 +32,7 @@ export default function VgpuCanvas({
       label={label}
       className={className}
       fallback={fallback}
+      preview={preview}
     />
   );
 }

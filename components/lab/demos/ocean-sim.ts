@@ -13,6 +13,7 @@ import {
   Fn,
   instanceIndex,
   sin,
+  smoothstep,
   textureStore,
   uint,
   uniform,
@@ -29,6 +30,11 @@ type Vec4Buffer = StorageBufferNode<"vec4">;
 type Vec2Node = Node<"vec2">;
 
 const GRAVITY = 9.81;
+
+/** Choppiness is at full strength below the first wavenumber, gone above the
+ *  second. Long swell gets sharp crests; ripples are left round. */
+const CHOP_ROLLOFF_START = 0.35;
+const CHOP_ROLLOFF_END = 4.5;
 
 /** Complex multiply. */
 const cmul = (a: Vec2Node, b: Vec2Node) =>
@@ -246,8 +252,8 @@ const DEFAULTS = {
   windSpeed: 11,
   windAngle: 28,
   alignment: 0.85,
-  choppiness: 1.65,
-  cascades: [{ tile: 389, gain: 1 }, { tile: 27.1, gain: 1 }] as Cascade[],
+  choppiness: 1.75,
+  cascades: [{ tile: 389, gain: 1 }, { tile: 27.1, gain: 2.1 }] as Cascade[],
   /** Significant wave height in metres, the sea state you actually want. */
   waveHeight: 3.1,
 };
@@ -457,9 +463,17 @@ export class OceanSimulation {
       const height = forward.add(backward);
 
       // Horizontal displacement is the height spectrum turned a quarter turn
-      // and scaled by the unit wavevector. It is what sharpens the crests.
-      const dx = vec2(height.y, height.x.negate()).mul(kx.div(k).mul(choppiness));
-      const dz = vec2(height.y, height.x.negate()).mul(kz.div(k).mul(choppiness));
+      // and scaled by the unit wavevector. It is what sharpens the crests, and
+      // it has to roll off with wavenumber: at full strength on metre-long
+      // ripples it pinches them into spikes rather than sharpening anything.
+      const chop = smoothstep(
+        float(CHOP_ROLLOFF_END),
+        float(CHOP_ROLLOFF_START),
+        k,
+      ).mul(choppiness);
+      const quarterTurn = vec2(height.y, height.x.negate());
+      const dx = quarterTurn.mul(kx.div(k).mul(chop));
+      const dz = quarterTurn.mul(kz.div(k).mul(chop));
 
       // Packed: one complex channel carries height and x displacement, the
       // other carries z displacement. Both spectra are Hermitian, so the

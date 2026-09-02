@@ -6,10 +6,12 @@ import {
   SphereGeometry,
 } from "three/webgpu";
 import {
+  abs,
   cameraPosition,
   cross,
   float,
   length,
+  max,
   mix,
   mx_fractal_noise_float,
   normalize,
@@ -45,6 +47,11 @@ const PLANE_SEGMENTS = 640;
 const EYE_HEIGHT = 3.6;
 const HAZE_NEAR = 85;
 const HAZE_FAR = 300;
+/**
+ * Roughly how much world a pixel covers per unit of distance, head on. Only
+ * the order of magnitude matters; it sets where detail hands over to roughness.
+ */
+const PIXEL_ANGLE = 0.00085;
 
 /** Analytic sky: haze at the horizon, deep blue overhead, a sun with a halo. */
 function skyColor(direction: Vec3Node) {
@@ -64,12 +71,13 @@ function skyColor(direction: Vec3Node) {
  * GGX keeps a tight core and a wide skirt, which is what makes sun glitter
  * scatter across chop instead of sitting on top of it.
  */
-function ggx(normal: Vec3Node, view: Vec3Node, roughness: number) {
+function ggx(normal: Vec3Node, view: Vec3Node, roughness: Node<"float">) {
   const halfway = normalize(view.add(SUN_NODE));
   const cosine = saturate(normal.dot(halfway));
-  const a2 = roughness * roughness * roughness * roughness;
-  const d = cosine.mul(cosine).mul(a2 - 1).add(1);
-  return float(a2).div(d.mul(d).mul(Math.PI)).min(4000);
+  const alpha = roughness.mul(roughness);
+  const a2 = alpha.mul(alpha);
+  const d = cosine.mul(cosine).mul(a2.sub(1)).add(1);
+  return a2.div(d.mul(d).mul(Math.PI)).min(4000);
 }
 
 export const ocean: ThreeSetup = ({
@@ -118,7 +126,11 @@ export const ocean: ThreeSetup = ({
   const material = new MeshBasicNodeMaterial();
 
   /** Both cascades summed at a ground position, as (x, height, z). */
-  const displacementAt = (ground: Vec2Node, fineWeight: number, lod?: number) => {
+  const displacementAt = (
+    ground: Vec2Node,
+    fineWeight: Node<"float">,
+    lod?: number,
+  ) => {
     const a = texture(coarse, ground.div(coarseTile));
     const b = texture(fine, ground.div(fineTile));
     const sampleA = lod === undefined ? a : a.level(float(lod));
@@ -126,12 +138,19 @@ export const ocean: ThreeSetup = ({
     return sampleA.xyz.add(sampleB.xyz.mul(fineWeight));
   };
 
-  // The fine cascade is 0.09m per texel against a 1.4m vertex spacing, so most
-  // of it cannot be resolved by the geometry at all. It goes in at a fraction
-  // here and at full strength in the normal below, where pixels can carry it.
+  // The fine cascade is 0.1m per texel against a 0.9m vertex spacing, so the
+  // grid cannot represent most of it anywhere, and out at the horizon it cannot
+  // represent any of it. Displacing vertices by a signal the grid cannot carry
+  // does not add detail, it adds aliasing, so the cascade fades out with
+  // distance in the geometry and is picked up by the normal below instead.
   const VERTEX_FINE = 0.55;
   const ground = vec2(positionLocal.x, positionLocal.z);
-  const displaced = positionLocal.add(displacementAt(ground, VERTEX_FINE, 0));
+  const vertexFine = smoothstep(
+    float(160),
+    float(30),
+    length(cameraPosition.sub(positionLocal)),
+  ).mul(VERTEX_FINE);
+  const displaced = positionLocal.add(displacementAt(ground, vertexFine, 0));
   material.positionNode = displaced;
 
   const worldPosition = varying(displaced);
@@ -139,16 +158,33 @@ export const ocean: ThreeSetup = ({
   material.colorNode = (() => {
     const flat = vec2(worldPosition.x, worldPosition.z);
 
+    const toCamera = cameraPosition.sub(worldPosition);
+    const distance = length(toCamera);
+    const view = toCamera.div(distance);
+
+    // How much world one pixel covers where it lands on the water. A grazing
+    // ray stretches that footprint enormously, which is exactly where the
+    // sparkle comes from: a fixed sampling step out at the horizon reads far
+    // below the pixel and hands back a normal that changes wildly between
+    // neighbours.
+    const grazing = max(abs(view.y), float(0.04));
+    const footprint = distance.mul(PIXEL_ANGLE).div(grazing);
+
+    const fineTexel = fineTile / sim.size;
+    // Differences taken over a pixel, never under one.
+    const step = max(float(fineTexel), footprint);
+    // What is left of the fine cascade at this footprint.
+    const resolved = saturate(float(fineTexel * 5).div(footprint));
+
     // Central differences of the displaced surface. Because the water moves
     // sideways as well as up, the slope of the height alone is not the surface
     // normal: the horizontal terms have to come along.
-    const step = fineTile / sim.size;
-    const px = displacementAt(flat.add(vec2(step, 0)), 1);
-    const nx = displacementAt(flat.sub(vec2(step, 0)), 1);
-    const pz = displacementAt(flat.add(vec2(0, step)), 1);
-    const nz = displacementAt(flat.sub(vec2(0, step)), 1);
+    const px = displacementAt(flat.add(vec2(step, 0)), resolved);
+    const nx = displacementAt(flat.sub(vec2(step, 0)), resolved);
+    const pz = displacementAt(flat.add(vec2(0, step)), resolved);
+    const nz = displacementAt(flat.sub(vec2(0, step)), resolved);
 
-    const inv = 1 / (2 * step);
+    const inv = float(0.5).div(step);
     const dPdx = vec3(
       px.x.sub(nx.x).mul(inv).add(1),
       px.y.sub(nx.y).mul(inv),
@@ -178,13 +214,10 @@ export const ocean: ThreeSetup = ({
       0.5,
       1,
     );
+    const capillary = resolved.mul(0.06);
     const normal = normalize(
-      geometric.add(vec3(rippleX.mul(0.03), 0.0, rippleZ.mul(0.03))),
+      geometric.add(vec3(rippleX.mul(capillary), 0.0, rippleZ.mul(capillary))),
     );
-
-    const toCamera = cameraPosition.sub(worldPosition);
-    const distance = length(toCamera);
-    const view = toCamera.div(distance);
 
     // Schlick against water's real index of refraction: two percent straight
     // on, almost a mirror at grazing angles. This one term is most of the look.
@@ -199,12 +232,16 @@ export const ocean: ThreeSetup = ({
 
     // Light that entered the back of a crest and came out toward the eye. Only
     // when the sun is behind the wave, and only near the top of one.
-    const through = pow(saturate(view.dot(SUN_NODE.negate())), 3.0);
-    const lift = saturate(worldPosition.y.mul(0.55).sub(0.05));
-    const scatter = vec3(0.05, 0.34, 0.31).mul(through.mul(lift).mul(0.9));
+    const through = pow(saturate(view.dot(SUN_NODE.negate())), 4.5);
+    const lift = saturate(worldPosition.y.mul(0.34).sub(0.12));
+    const scatter = vec3(0.04, 0.22, 0.22).mul(through.mul(lift).mul(0.6));
 
+    // Detail a pixel cannot resolve has not disappeared, it has turned into
+    // roughness. Folding it into the highlight instead of dropping it is what
+    // stops the far water from sparkling like tinsel.
+    const roughness = float(0.045).add(resolved.oneMinus().mul(0.24));
     const glitter = vec3(1.0, 0.94, 0.82).mul(
-      ggx(normal, view, 0.075).mul(fresnel).mul(1.6),
+      ggx(normal, view, roughness).mul(fresnel).mul(1.6),
     );
 
     let color: Vec3Node = mix(body.add(scatter), reflected, fresnel).add(glitter);
@@ -223,7 +260,9 @@ export const ocean: ThreeSetup = ({
     )
       .mul(0.5)
       .add(0.5);
-    const foam = smoothstep(0.78, 0.1, jacobian).mul(foamNoise.mul(0.95).add(0.05));
+    const foam = smoothstep(0.78, 0.1, jacobian).mul(
+      foamNoise.mul(resolved.mul(0.8).add(0.1)).add(0.15),
+    );
     color = mix(color, vec3(0.88, 0.93, 0.96), saturate(foam));
 
     // Aerial perspective. Fading into the same sky the reflections come from

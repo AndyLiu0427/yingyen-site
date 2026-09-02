@@ -64,6 +64,18 @@ glitter because a raised cosine either blooms into plastic or shrinks to a dot,
 and an analytic sky that is at once the background, the only light in the scene
 and every reflection in the water.
 
+Most of what separates this from a grainy version is filtering rather than
+simulation. A pixel at the horizon covers metres of water, so sampling the
+normal over a fixed 10cm step there returns something that changes wildly
+between neighbours, and the sea sparkles like tinsel. Central differences are
+taken over the pixel's own footprint instead, stretched by the grazing angle;
+the fine cascade fades out of the geometry over the distance where the vertex
+grid stops being able to carry it; and the detail that falls below a pixel is
+added back as GGX roughness rather than dropped, because unresolved normal
+variance is roughness. Choppiness also rolls off with wavenumber: horizontal
+displacement sharpens a crest, but applied to metre-long ripples it pinches
+them into spikes.
+
 **Curl Field.** Every particle is four floats, position and velocity, in one
 storage buffer. A compute pass rewrites that buffer in place each frame and
 the render pass reads the same memory as instance data, so 163,840 particles

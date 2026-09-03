@@ -52,8 +52,9 @@ const SCENES: Scene[] = [
 /** Holding the pointer on the ball charges it; letting go lets it settle. */
 const CHARGE_SECONDS = 1.6;
 const SETTLE_SECONDS = 1.0;
-/** Fully charged, the ball is this many times its resting size and speed. */
-const CHARGE_MAX = 1.6;
+/** Fully charged, the ball is this many times its resting size and speed:
+ * the film goes from a hand to a house. */
+const CHARGE_MAX = 2.7;
 
 /**
  * Orbits: the axis each ring turns about, its radius as a fraction of the
@@ -250,7 +251,8 @@ fn orbit(ro: vec3f, rd: vec3f, axis: vec3f, radius: f32, phase: f32, arcs: f32, 
   let r = R * (1.0 + 0.025 * sin(p.time * 5.3) + ${(CHARGE_MAX - 1).toFixed(2)} * p.charge);
   // Chakra is not steady: a frame-rate flicker, a few percent, like the anime.
   let flicker = 1.0 + 0.06 * (hash3(vec3f(floor(p.time * 24.0), 1.0, 7.0)) - 0.5);
-  let glow = (1.0 + 0.3 * p.charge) * flicker;
+  // Resting it is a quiet thing; charged it is the film.
+  let glow = (0.5 + 0.5 * p.charge) * flicker;
 
   // Closest approach of the ray to the centre: everything below is a function
   // of it, because the ball is a volume and a pixel is a chord through it.
@@ -322,7 +324,7 @@ ${ORBITS.map((o) => `  arcs += orbit(rob, rd, vec3f(${o.axis.map((v) => v.toFixe
     color += CHAKRA * smoothstep(0.55, 0.98, b) * smoothstep(1.06, 0.98, b) * 0.35 * glow;
 
     // Core: the compressed centre, white going cyan.
-    color += mix(CYAN, CORE, exp(-b * b * 5.0)) * exp(-b * b * 2.8) * 1.6 * glow;
+    color += mix(CYAN, CORE, exp(-b * b * 5.0)) * exp(-b * b * 2.8) * 1.1 * glow;
   }
 
   return vec4f(color, 1.0);
@@ -354,7 +356,7 @@ export const rasengan: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMo
     fwd: [0, 0, -1],
   };
   const aim = (yaw: number, aspect: number) => {
-    const dist = 4.8 * RADIUS * Math.min(1, Math.max(0.75, aspect / 1.6));
+    const dist = 7.6 * RADIUS * Math.min(1, Math.max(0.75, aspect / 1.6));
     camera.pos = [Math.sin(yaw) * dist, 0.45 * RADIUS, Math.cos(yaw) * dist];
     camera.fwd = normalize3(camera.pos.map((v) => -v));
     camera.right = normalize3(cross3(camera.fwd, [0, 1, 0]));
@@ -381,21 +383,33 @@ export const rasengan: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMo
     return b * b - (ro[0] ** 2 + ro[1] ** 2 + ro[2] ** 2 - bound * bound) >= 0;
   };
 
-  // Hold the pointer on the ball and it charges: bigger, brighter, faster.
-  // Let go and it settles. A press on the world behind it changes the world.
-  let holding = false;
+  // Rest the pointer on the ball, or hold it there, and it charges: bigger,
+  // brighter, faster, the way the film's grows from a hand to a house. Move
+  // off and it settles. A press on the world behind it changes the world.
+  let hovering = false;
+  let pressed = false;
   let charge = 0;
+  const move = (event: PointerEvent) => {
+    hovering = hits(event);
+  };
   const press = (event: PointerEvent) => {
-    if (hits(event)) holding = true;
+    if (hits(event)) pressed = true;
     else scenes.next();
   };
   const release = () => {
-    holding = false;
+    pressed = false;
   };
+  const leave = () => {
+    hovering = false;
+  };
+  canvas.addEventListener("pointermove", move, { passive: true });
+  canvas.addEventListener("pointerleave", leave, { passive: true });
   canvas.addEventListener("pointerdown", press, { passive: true });
   window.addEventListener("pointerup", release, { passive: true });
   window.addEventListener("pointercancel", release, { passive: true });
   onCleanup(() => {
+    canvas.removeEventListener("pointermove", move);
+    canvas.removeEventListener("pointerleave", leave);
     canvas.removeEventListener("pointerdown", press);
     window.removeEventListener("pointerup", release);
     window.removeEventListener("pointercancel", release);
@@ -409,9 +423,11 @@ export const rasengan: VgpuSetup = ({ gpu, surface, canvas, onCleanup, reducedMo
 
     if (!reducedMotion) {
       const dt = Math.min(delta, 1 / 20);
+      const holding = hovering || pressed;
       charge = Math.max(0, Math.min(1, charge + dt / (holding ? CHARGE_SECONDS : -SETTLE_SECONDS)));
-      // Spin is its own clock so the charge can speed the streaks up.
-      spin += dt * (1 + (CHARGE_MAX - 1) * charge);
+      // Spin is its own clock so the charge can speed the net up. Squared, so
+      // the last of the growth brings most of the speed, six times at the top.
+      spin += dt * (1 + 5 * charge * charge);
       aim(Math.sin(time * 0.09) * 0.45, fw / fh);
     }
 

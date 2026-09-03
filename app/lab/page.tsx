@@ -3,10 +3,24 @@ import type { Metadata } from "next";
 import LabSketch from "@/components/lab/LabSketch";
 import { labSketches } from "@/lib/lab";
 
+const title = "Lab · YingYen Liu";
+const description =
+  "WebGPU sketches: an FFT ocean, a ray traced drop of water, a Rasengan, compute-shader particles, a ping-pong wave solver, and domain-warped noise.";
+const images = [{ url: "/og/lab-rasengan.jpg", width: 1200, height: 630 }];
+
 export const metadata: Metadata = {
-  title: "Lab · YingYen Liu",
-  description:
-    "WebGPU sketches: an FFT ocean, a ray traced drop of water, a Rasengan, compute-shader particles, a ping-pong wave solver, and domain-warped noise.",
+  title,
+  description,
+  alternates: { canonical: "https://yingyen.com/lab" },
+  openGraph: {
+    type: "website",
+    url: "https://yingyen.com/lab",
+    siteName: "YingYen Liu",
+    title,
+    description,
+    images,
+  },
+  twitter: { card: "summary_large_image", title, description, images },
 };
 
 export default function LabPage() {

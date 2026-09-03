@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local-only share assets: third-party film frames used as reference, and
+# rendered clips. Neither belongs in a public repo.
+/docs/rasengan-refs/
+/docs/share/*.mp4

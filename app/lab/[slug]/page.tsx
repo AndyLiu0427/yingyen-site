@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import CopyBlock from "@/components/lab/CopyBlock";
 import LabSketch from "@/components/lab/LabSketch";
 import { findSketch, labSketches } from "@/lib/lab";
 
@@ -14,9 +15,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const sketch = findSketch(slug);
   if (!sketch) return {};
+  const title = `${sketch.name} · Lab · YingYen Liu`;
+  const url = `https://yingyen.com/lab/${sketch.slug}`;
+  // Every sketch carries its own card. Without these the root layout's
+  // metadata wins and a pasted link shows the home page instead.
+  const images = [{ url: `/og/lab-${sketch.slug}.jpg`, width: 1200, height: 630 }];
   return {
-    title: `${sketch.name} · Lab · YingYen Liu`,
+    title,
     description: sketch.blurb,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      url,
+      siteName: "YingYen Liu",
+      title,
+      description: sketch.blurb,
+      images,
+    },
+    twitter: { card: "summary_large_image", title, description: sketch.blurb, images },
   };
 }
 
@@ -72,6 +88,14 @@ export default async function SketchPage({ params }: Props) {
         <p className="mt-8 max-w-[58ch] leading-relaxed text-muted [text-wrap:pretty]">
           {sketch.detail}
         </p>
+
+        {sketch.prompt && (
+          <CopyBlock
+            title="Rebuild it"
+            lead="This is the whole recipe, written as a prompt. Paste it into an AI coding assistant and it has everything: the maths, the numbers, the colours."
+            text={sketch.prompt}
+          />
+        )}
 
         <nav className="mt-24 flex items-baseline justify-between border-t border-line pt-8">
           <span className="font-mono text-xs tracking-[0.18em] text-faint uppercase">

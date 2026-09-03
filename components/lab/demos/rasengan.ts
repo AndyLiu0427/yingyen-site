@@ -14,7 +14,9 @@ import type { Scene } from "./photo-scenes";
  * What reads as spinning, in the films, is a handful of bright arcs orbiting
  * the ball on tilted circles, fast, each with a tail, dimmed where they pass
  * behind the glow. They are drawn as ray-plane intersections with each orbit's
- * plane: cheap, exact, and no noise involved.
+ * plane: cheap and exact. The orbits precess and their radii wander, and each
+ * lap rolls a hash for whether an arc shows and how long its tail is, so the
+ * paths never repeat. Arcs and the stirred air only appear as the ball grows.
  *
  * The threads are what the film draws: a cage of light. In the Parent and
  * Child Rasengan at the end of Boruto: Naruto the Movie the ball is wound
@@ -218,25 +220,36 @@ ${[
  * from the ring, and where it sits around it relative to the arcs' heads.
  * ro and rd are in ball units, centred on the ball.
  */
-fn orbit(ro: vec3f, rd: vec3f, axis: vec3f, radius: f32, phase: f32, arcs: f32, inside: f32) -> f32 {
+fn orbit(ro: vec3f, rd: vec3f, axis0: vec3f, radius0: f32, phase: f32, arcs: f32, inside: f32, seed: f32) -> f32 {
+  // Nothing about an orbit stays put: the axis precesses on three
+  // incommensurate clocks, the radius wanders, so no two laps match.
+  let t = p.time;
+  let axis = normalize(axis0 + 0.4 * vec3f(
+    sin(t * 0.37 + seed), sin(t * 0.53 + seed * 2.1), sin(t * 0.29 + seed * 3.3)));
+  let radius = radius0 * (1.0 + 0.07 * sin(t * 0.61 + seed * 1.7));
   let denom = dot(rd, axis);
   if (abs(denom) < 1e-4) { return 0.0; }
-  let t = -dot(ro, axis) / denom;
-  if (t < 0.0) { return 0.0; }
-  let hit = ro + rd * t;
+  let tt = -dot(ro, axis) / denom;
+  if (tt < 0.0) { return 0.0; }
+  let hit = ro + rd * tt;
   let u = normalize(cross(axis, vec3f(0.31, 0.77, 0.55)));
   let v = cross(axis, u);
   let ring = smoothstep(0.035, 0.008, abs(length(hit) - radius));
   // Angle around the ring, measured from the leading head, wrapped so the
-  // tail trails behind the direction of travel.
+  // tail trails behind the direction of travel. Each lap draws a hash: some
+  // arcs sit out a lap, and the ones that show have tails of their own length.
   let ang = atan2(dot(hit, v), dot(hit, u));
-  let behind = fract((phase - ang) / 6.2831853 * arcs);
-  let arc = exp(-behind * 9.0) * smoothstep(0.0, 0.02, behind);
+  let turns = (phase - ang) / 6.2831853 * arcs;
+  let lap = floor(turns);
+  let behind = turns - lap;
+  let roll = hash3(vec3f(lap, seed, 3.0));
+  let present = step(0.3, roll);
+  let arc = exp(-behind * (5.0 + 9.0 * roll)) * smoothstep(0.0, 0.02, behind);
   // On the far side of the ball the arc is seen through chakra, and where
   // the glow is dense it is lost altogether.
   let far = step(0.0, dot(hit, rd));
   let hidden = mix(1.0, 0.18, far * inside);
-  return ring * arc * hidden;
+  return ring * arc * present * hidden;
 }
 
 @fragment fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
@@ -252,7 +265,7 @@ fn orbit(ro: vec3f, rd: vec3f, axis: vec3f, radius: f32, phase: f32, arcs: f32, 
   // Chakra is not steady: a frame-rate flicker, a few percent, like the anime.
   let flicker = 1.0 + 0.06 * (hash3(vec3f(floor(p.time * 24.0), 1.0, 7.0)) - 0.5);
   // Resting it is a quiet thing; charged it is the film.
-  let glow = (0.5 + 0.5 * p.charge) * flicker;
+  let glow = (0.5 + 0.25 * p.charge) * flicker;
 
   // Closest approach of the ray to the centre: everything below is a function
   // of it, because the ball is a volume and a pixel is a chord through it.
@@ -267,6 +280,9 @@ fn orbit(ro: vec3f, rd: vec3f, axis: vec3f, radius: f32, phase: f32, arcs: f32, 
   let radial = vec2f(cos(theta), sin(theta));
   let tangent = vec2f(-radial.y, radial.x);
   let pull = 1.0 + 1.5 * p.charge;
+  // At rest the ball is quiet. The air around it, and the arcs that orbit it,
+  // only come as it grows, the way the film's does.
+  let stirred = smoothstep(0.1, 0.7, p.charge);
 
   // How much chakra is in front of this pixel, softly: full well inside, gone
   // a little past the reach. Every term below rides on this so nothing has an
@@ -277,7 +293,7 @@ fn orbit(ro: vec3f, rd: vec3f, axis: vec3f, radius: f32, phase: f32, arcs: f32, 
   // spiral, hardest around the shell and fading both ways from it.
   let near = exp(-abs(b - 1.0) * 3.0);
   let shimmer = noise3(vec3f(theta * 2.0, b * 2.5, p.time * 2.0)) - 0.5;
-  let drag = (tangent * 0.6 - radial * 0.5) * near * (0.03 + 0.03 * shimmer) * pull;
+  let drag = (tangent * 0.6 - radial * 0.5) * near * (0.03 + 0.03 * shimmer) * pull * stirred;
   let bent = normalize(rd + p.camRight * drag.x + p.camUp * drag.y);
   var color = envColor(bent, p.dofLod);
   // Seen through chakra the world is dimmer and bluer.
@@ -293,7 +309,7 @@ fn orbit(ro: vec3f, rd: vec3f, axis: vec3f, radius: f32, phase: f32, arcs: f32, 
     + noise3(vec3f(ring * 2.3 + 5.0, outward * 2.1 + 3.0)) * 0.35;
   tongue = smoothstep(0.62 - 0.08 * p.charge, 0.88, tongue);
   let cling = exp(-abs(b - 1.0) * 5.0) * smoothstep(0.7, 1.05, b);
-  color += mix(CHAKRA, CORE, 0.35) * tongue * cling * (0.35 + 0.6 * p.charge) * glow;
+  color += mix(CHAKRA, CORE, 0.35) * tongue * cling * (0.35 + 0.6 * p.charge) * glow * stirred;
 
   // Halo around the shell, and the light it throws on everything nearby: the
   // films let the chakra bleed a long way into the frame.
@@ -304,8 +320,8 @@ fn orbit(ro: vec3f, rd: vec3f, axis: vec3f, radius: f32, phase: f32, arcs: f32, 
   // Arcs orbiting the ball: the spin you can see.
   let rob = ro / r;
   var arcs = 0.0;
-${ORBITS.map((o) => `  arcs += orbit(rob, rd, vec3f(${o.axis.map((v) => v.toFixed(4)).join(", ")}), ${o.radius.toFixed(2)}, p.spin * ${(o.speed * 6.2831853).toFixed(3)}, ${o.arcs.toFixed(1)}, inside);`).join("\n")}
-  color += mix(CYAN, CORE, 0.6) * arcs * 1.2 * glow;
+${ORBITS.map((o, i) => `  arcs += orbit(rob, rd, vec3f(${o.axis.map((v) => v.toFixed(4)).join(", ")}), ${o.radius.toFixed(2)}, p.spin * ${(o.speed * 6.2831853).toFixed(3)}, ${o.arcs.toFixed(1)}, inside, ${(i * 7.3 + 1.0).toFixed(1)});`).join("\n")}
+  color += mix(CYAN, CORE, 0.6) * arcs * 1.2 * glow * stirred;
 
   if (b < ${REACH}) {
     // The cage of thread, and how much of it is deep inside.

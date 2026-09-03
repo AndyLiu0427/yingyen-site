@@ -1,0 +1,5 @@
+Naruto's Rasengan in one WebGPU fragment shader. No noise, no textures: 144 circles on a sphere, dot(n, a) = h, one multiply each.
+
+Hover to charge it. The whole recipe is on the page as a prompt you can copy: yingyen.com/lab/rasengan
+
+#WebGPU #shaders

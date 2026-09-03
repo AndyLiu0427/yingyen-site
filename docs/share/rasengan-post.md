@@ -15,10 +15,17 @@ to a 404 shows no card at all.
 
 ## X (under 280 characters)
 
-Built Naruto's Rasengan in one WebGPU fragment shader. 144 circles on a
-sphere (dot(n, a) = h, one multiply each), orbits as ray-plane hits, a
-density field with no edge, no noise. Hover to charge it. The full recipe
-is on the page as a prompt you can copy: yingyen.com/lab/rasengan
+The text as posted lives in `x-post.txt`, ready to paste. X counts a URL as
+23 characters whatever its length, which is what makes it fit.
+
+Naruto's Rasengan in one WebGPU fragment shader. No noise, no textures: 144 circles on a sphere, dot(n, a) = h, one multiply each.
+
+Hover to charge it. The whole recipe is on the page as a prompt you can copy: yingyen.com/lab/rasengan
+
+#WebGPU #shaders
+
+Attach `rasengan-clip-720.mp4` to this post, not to a reply: a post with no
+media and no link is invisible in a timeline.
 
 ### Tags
 
@@ -43,25 +50,25 @@ five broad ones work better there: #WebGPU #ComputerGraphics #Shaders
 
 ## LinkedIn (technical only)
 
+The text as posted lives in `linkedin-post.txt`, ready to paste. Attach the
+same clip. LinkedIn hides everything after about 210 characters behind "see
+more", so the first two sentences carry the post.
+
 A ball of chakra in one WebGPU fragment shader, and how little maths it took.
 
-The lines are circles on a sphere: the set of directions n where dot(n, a)
-= h for an axis a and an offset h. One multiply per line. 144 of them in
-four groups, each group rotated about its own axis (Rodrigues) at its own
-speed, evaluated on four nested shells front and back, and the net is done.
-No noise, no textures.
+The lines are circles on a sphere: the set of directions n where dot(n, a) = h, for an axis a and an offset h. One multiply per line. 144 of them in four groups, each group rotated about its own axis at its own speed, evaluated on four nested shells front and back, and the net is done. No noise, no textures.
 
-The rest is the same habit: reduce every effect to a number per pixel. The
-arcs that orbit the ball are ray-plane intersections with a per-lap hash so
-no two passes match. The body is a density field that thins with radius,
-so the glow has no edge. The background is a real HDRI, log-encoded into an
-8-bit WebP so eight bits carry seventeen stops, with mip-based depth of
-field and a bloom pass on top. Straight WGSL on vgpu, no engine.
+The rest is the same habit: reduce every effect to a number per pixel.
 
-Hover the ball and it charges: bigger, brighter, faster.
+- The arcs that orbit the ball are ray-plane intersections, with a per-lap hash so no two passes match.
+- The body is a density field that thins with radius, so the glow has no edge.
+- The background is a real HDRI, log-encoded into an 8-bit WebP so eight bits carry seventeen stops, with mip-based depth of field and a bloom pass on top.
 
-Live at yingyen.com/lab/rasengan. The whole recipe is on the page as a
-prompt with a copy button, so you can hand it to an AI and rebuild it.
+Straight WGSL on vgpu, no engine. Hover the ball and it charges: bigger, brighter, faster.
+
+Live at yingyen.com/lab/rasengan. The whole recipe is on the page as a prompt with a copy button, so you can hand it to an AI and rebuild it yourself.
+
+#WebGPU #ComputerGraphics #Shaders #CreativeCoding #Frontend
 
 ## Is it appropriate to share
 

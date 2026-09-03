@@ -1,0 +1,15 @@
+A ball of chakra in one WebGPU fragment shader, and how little maths it took.
+
+The lines are circles on a sphere: the set of directions n where dot(n, a) = h, for an axis a and an offset h. One multiply per line. 144 of them in four groups, each group rotated about its own axis at its own speed, evaluated on four nested shells front and back, and the net is done. No noise, no textures.
+
+The rest is the same habit: reduce every effect to a number per pixel.
+
+- The arcs that orbit the ball are ray-plane intersections, with a per-lap hash so no two passes match.
+- The body is a density field that thins with radius, so the glow has no edge.
+- The background is a real HDRI, log-encoded into an 8-bit WebP so eight bits carry seventeen stops, with mip-based depth of field and a bloom pass on top.
+
+Straight WGSL on vgpu, no engine. Hover the ball and it charges: bigger, brighter, faster.
+
+Live at yingyen.com/lab/rasengan. The whole recipe is on the page as a prompt with a copy button, so you can hand it to an AI and rebuild it yourself.
+
+#WebGPU #ComputerGraphics #Shaders #CreativeCoding #Frontend
